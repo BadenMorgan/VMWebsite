@@ -36,7 +36,7 @@ GPIO.setmode(GPIO.BCM)
 ser1 = serial.Serial(
               
                port='/dev/ttyAMA0',
-               baudrate = 9600,
+               baudrate = 115200,
                parity=serial.PARITY_NONE,
                stopbits=serial.STOPBITS_ONE,
                bytesize=serial.EIGHTBITS,
@@ -129,8 +129,8 @@ def DispenceIC(addressbyte,commandbyte,valuebyte):
 		else:
 			global retries
 			global maxretry
-			if valuebyte != 0:
-				UpdateLCD("Dispensing      Components")
+			# if valuebyte != 0:
+				# UpdateLCD("Dispensing      Components")
 			TXBuffer[1] = addressbyte
 			TXBuffer[2] = commandbyte
 			TXBuffer[3] = valuebyte
@@ -185,9 +185,13 @@ def DispenceIC(addressbyte,commandbyte,valuebyte):
 					logging.debug("Failed Dispense")
 			try:
 				check = value[0]
+				print(check)
 				check = (check + value[1]) & 0xFF
+				print(check)
 				check = (check + value[2]) & 0xFF
+				print(check)
 				check = (check + value[3]) & 0xFF
+				print(check)
 				if value[0] == 0xD1 and value[1] == addressbyte and value[3] == 1 and value[4] == check and value[5] == 0xE1:
 					retries = 0
 					if value[2] & 0x01:
@@ -425,6 +429,26 @@ def UpdateJEL(JEL, address):
 	except:
 		logging.warning("failed to Update database on jam, empty or low status")
 
+def mailadmin(address, report):
+	fo = open("email.php", "w+")
+	fo.write('<?php\n')
+	fo.write("include 'includes/variables.php';\n")
+	fo.write('$fromHeader = "From: Vending Machie Report";\n')
+	reportcode = ''
+	if report == 0:
+		reportcode = "JAM"
+	else:
+		reportcode = "EMPTY"
+	fo.write('$text = "The Vending Machine has a:\\n' + reportcode + '\\nThe device reporting is at address, shown as integer (binary):\\n' + str(address) + ' (' + str('{0:08b}'.format(address)) + ')\\nPlease attend to it as soon as possible.";\n')
+	fo.write('mail($EmailAdmin,"Vending Machine Report" , "From: Vending Machine\\n\\n".$text."\\n\\n"."Sent: ".date("h:i:sa d-m-Y"),$fromHeader);\n')
+	fo.write('?>\n')
+	fo.close()
+	os.system('sudo mv email.php /var/www/html/')
+	os.system('sudo php -f /var/www/html/email.php')
+	os.system('sudo rm /var/www/html/email.php')
+	return
+	
+
 def callModules():
 	# try:
 	global retries
@@ -536,7 +560,7 @@ def callModules():
 
 # try:
 # time.sleep(5)
-callModules()
+# callModules()
 while True:
 	# try:
 	# if(ser.inWaiting()>0):
@@ -577,19 +601,24 @@ while True:
 	# rlist, _, _ = select([sys.stdin], [], [], 1)
 	# if rlist:		
 	# 	command = sys.stdin.readline()
-	# 	sys.stdin.flush()	
-	ComponentNoCheck("MRGBAD001")
+	# 	sys.stdin.flush()
+
+	# ComponentNoCheck("MRGBAD001")
 	command = input("enter g: ")
 	if command == 'g':
+		# Free()
 		# RequestDispence('MRGBAD001')
 		# RequestStNo('81607133871')
 		# logging.debug("despensing")
 		DispenceIC(1,0xB3,3)
-		FinalMsg()
+		# FinalMsg()
 		# 
+		DispenceIC(1,0xB5,0)
 		command = ''
 	if command == 'f':
 		Free();
+	if command == 'e':
+		mailadmin(6,0)
 		# i = 0
 		# for i in range (0, len(admins)):
 		# 	logging.debug(admins[i])
